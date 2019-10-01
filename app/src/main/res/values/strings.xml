@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Local Deets</string>
+    <string name="drivetime_header">DRIVE TIMES</string>
+    <string name="weather_header">WEATHER</string>
+    <string name="weather_icon">weather_icon</string>
+    <string name="frag_loading_text">updating details ...</string>
+</resources>

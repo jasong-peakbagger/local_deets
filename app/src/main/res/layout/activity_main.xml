@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".activities.MainActivity">
+
+    <FrameLayout
+        android:id="@+id/drivetimes_view"
+        android:name="com.jgoodwin.localdeets.fragments.DriveTimesFragment"
+        android:layout_width="0dp"
+        android:layout_height="357dp"
+        android:layout_weight="1"
+        android:background="@android:color/black"
+        app:layout_constraintBottom_toTopOf="@+id/weather_view"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/drive_times_text"
+            android:layout_width="match_parent"
+            android:layout_height="350dp"
+            android:fontFamily="sans-serif-light"
+            android:gravity="center"
+            android:text="@string/frag_loading_text"
+            android:clickable="true"
+            android:textAlignment="center"
+            android:textColor="@color/colorAccent"
+            android:textSize="30sp"
+            android:visibility="visible"
+            tools:text="@string/drivetime_header"
+            tools:visibility="visible">
+
+        </TextView>
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/weather_view"
+        android:name="com.jgoodwin.localdeets.fragments.WeatherFragment"
+        android:layout_width="0dp"
+        android:layout_height="325dp"
+        android:layout_weight="1"
+        android:background="@color/yellow"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/drivetimes_view"
+        app:layout_constraintStart_toStartOf="@id/drivetimes_view"
+        app:layout_constraintTop_toBottomOf="@+id/drivetimes_view" >
+
+        <ImageView
+            android:id="@+id/weather_icon"
+            android:layout_width="119dp"
+            android:layout_height="107dp"
+            android:contentDescription="@string/weather_icon"
+            android:src="@drawable/ic_wi_day_sunny"
+            android:tint="@color/colorAccent"/>
+
+        <TextView
+            android:id="@+id/weather_text"
+            android:layout_width="match_parent"
+            android:layout_height="325dp"
+            android:fontFamily="sans-serif-light"
+            android:gravity="center"
+            android:text="@string/frag_loading_text"
+            android:textAlignment="center"
+            android:textColor="@color/drk_blue"
+            android:textSize="30sp"
+            android:visibility="visible"
+            tools:text="@string/weather_header"
+            tools:visibility="visible">
+
+        </TextView>
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
