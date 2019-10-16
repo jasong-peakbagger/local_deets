@@ -10,37 +10,34 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.jgoodwin.localdeets.BuildConfig;
 import com.jgoodwin.localdeets.R;
+import com.jgoodwin.localdeets.api.WeatherApi;
+import com.jgoodwin.localdeets.api.model.Traffic.Traffic;
+import com.jgoodwin.localdeets.api.model.TrafficApi;
+import com.jgoodwin.localdeets.api.model.Weather.WeatherRoot;
+import com.jgoodwin.localdeets.utils.ApiUtils;
 
-import java.io.IOException;
-import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.Headers;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
     String trafficApiKey = BuildConfig.TrafficApiKey;
     String weatherApiKey = BuildConfig.WeatherApiKey;
+    String seattleZipcode = "98109";
+    String everettToSeattleId = "1";
 
     private String TAG = MainActivity.class.getSimpleName();
-    private final OkHttpClient client = new OkHttpClient();
-    
-    String weatherEverettUrl = "http://api.openweathermap.org/data/2.5/weather?zip=98208,us&units=imperial&appid=";
 
     private TextView mDriveTimesTextViewResult;
     private TextView mWeatherTextViewResult;
     private ImageView mWeatherIconImageView;
+    private WeatherApi mWeatherApi;
+    private TrafficApi mTrafficApi;
 
 
     @Override
@@ -51,23 +48,19 @@ public class MainActivity extends AppCompatActivity {
         mWeatherTextViewResult = findViewById(R.id.weather_text);
         mWeatherIconImageView = findViewById(R.id.weather_icon);
 
+        // Do Traffic & Weather requests
         try {
-            StringBuilder trafficEverSeattleurl = new StringBuilder("http://www.wsdot.com/Traffic/api/TravelTimes/TravelTimesREST.svc/GetTravelTimeAsJson?TravelTimeID=1&AccessCode=");
-            trafficEverSeattleurl.append(trafficApiKey);
-            doDriveTimesRequest(trafficEverSeattleurl.toString());
-
-            StringBuilder weatherSeattleUrl = new StringBuilder("http://api.openweathermap.org/data/2.5/weather?zip=98109,us&units=imperial&appid=");
-            weatherSeattleUrl.append(weatherApiKey);
-            doWeatherRequest(weatherSeattleUrl.toString());
+            doTrafficRequest(everettToSeattleId,trafficApiKey);
+            doWeatherRequest(seattleZipcode, weatherApiKey);
         } catch (Exception e) {
-            e.printStackTrace();
+
         }
 
         TextView driveTimesTextView = findViewById(R.id.drive_times_text);
         driveTimesTextView.setOnClickListener(mTouchyListener);
     }
 
-
+    // TODO: Make this actually do something later.
     private View.OnClickListener mTouchyListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -81,114 +74,56 @@ public class MainActivity extends AppCompatActivity {
     };
 
 
+    void doWeatherRequest(String zip, String key) {
+        mWeatherApi = ApiUtils.getWeather();
+        Call<WeatherRoot> call = mWeatherApi.getTempForZip(zip,key);
 
-    void doDriveTimesRequest(String url) {
-        final Request request = new Request.Builder()
-                .url(url)
-                .build();
+        call.enqueue(new Callback<WeatherRoot>() {
 
-        client.newCall(request)
-                .enqueue(new Callback() {
+            @Override
+            public void onResponse(Call<WeatherRoot> call, final Response<WeatherRoot> response) {
+
+                //Convert response to rounded decimal
+                DecimalFormat df = new DecimalFormat("#,###");
+                df.setRoundingMode(RoundingMode.HALF_UP);
+                final String tempAsRoundedDecimal = df.format(response.body().getMain().getTemp());
+
+                MainActivity.this.runOnUiThread(new Runnable() {
                     @Override
-                    public void onFailure(final Call call, IOException e) {
-
-                        //can show toast on failure
-                        Log.d(TAG, "Drive times call failed");
-                    }
-
-                    @Override
-                    public void onResponse(Call call, final Response response) throws IOException {
-
-                        try (ResponseBody responseBody = response.body()) {
-                            if (!response.isSuccessful()) {
-                                throw new IOException("Unexpected code " + response);
-                            } else {
-                                final String responseAsText = responseBody.string();
-                                Log.d(TAG,responseAsText);
-
-                                MainActivity.this.runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        // Update Weather textview from response.
-                                        mDriveTimesTextViewResult.setText("Everett to Seattle  " + parse(responseAsText) + " mns");
-                                    }
-                                });
-                            }
-
-                            Headers responseHeaders = response.headers();
-                            for (int i = 0, size = responseHeaders.size(); i < size; i++) {
-                                System.out.println(responseHeaders.name(i) + ": " + responseHeaders.value(i));
-                            }
-                        }
-                    }
-
-                    public String parse(String jsonLine) {
-                        JsonElement jelement = new JsonParser().parse(jsonLine);
-                        JsonObject  jobject = jelement.getAsJsonObject();
-                        String result = jobject.get("CurrentTime").getAsString();
-                        Log.d(TAG, result);
-                        return result;
+                    public void run() {
+                        // Update Weather textview from response.
+                        mWeatherTextViewResult.setText("Seattle temp " + tempAsRoundedDecimal);
                     }
                 });
+            }
+
+            @Override
+            public void onFailure(Call<WeatherRoot> call, Throwable t) {
+                call.cancel();
+                Log.d(TAG, "Call FAILED");
+            }
+        });
     }
 
-    void doWeatherRequest(String url) {
-
-        Log.d(TAG, url);
-
-        final Request request = new Request.Builder()
-                .url(url)
-                .build();
-
-        client.newCall(request)
-                .enqueue(new Callback() {
+    void doTrafficRequest(String travelTimeID, String accessCode) {
+        mTrafficApi = ApiUtils.getTravelTime();
+        Call<Traffic> call = mTrafficApi.getTravelTime(travelTimeID, accessCode);
+        call.enqueue(new Callback<Traffic>() {
+            @Override
+            public void onResponse(Call<Traffic> call, final Response<Traffic> response) {
+                MainActivity.this.runOnUiThread(new Runnable() {
                     @Override
-                    public void onFailure(final Call call, IOException e) {
-
-                        //can show toast on failure
-                        Log.d(TAG, "Weather call failed");
-                    }
-
-                    @Override
-                    public void onResponse(Call call, final Response response) throws IOException {
-
-                        try (ResponseBody responseBody = response.body()) {
-                            if (!response.isSuccessful()) {
-                                throw new IOException("Unexpected code " + response);
-                            } else {
-                                final String responseAsText = responseBody.string();
-                                Log.d(TAG,responseAsText);
-
-                                MainActivity.this.runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        //change text in text view on mainactivity
-                                        mWeatherTextViewResult.setText("Seattle temp " + parse(responseAsText));
-                                    }
-                                });
-                            }
-
-                            Headers responseHeaders = response.headers();
-                            for (int i = 0, size = responseHeaders.size(); i < size; i++) {
-                                System.out.println(responseHeaders.name(i) + ": " + responseHeaders.value(i));
-                            }
-                        }
-                    }
-
-                    public String parse(String jsonLine) {
-                        // Given api response, convert to jsonobject and parse out temperature.
-                        JsonElement jelement = new JsonParser().parse(jsonLine);
-                        JsonObject  jobject = jelement.getAsJsonObject();
-                        jobject = jobject.getAsJsonObject("main");
-                        BigDecimal result = jobject.get("temp").getAsBigDecimal();
-
-                        // Finally, convert Big D to a rounded-up string
-                        DecimalFormat df = new DecimalFormat("#,###");
-                        df.setRoundingMode(RoundingMode.HALF_UP);
-                        String rounded = df.format(result);
-
-                        return rounded;
+                    public void run() {
+                        // Update Traffic textview from response.
+                        mDriveTimesTextViewResult.setText("Everett to Seattle  " + response.body().getCurrentTime() + " mns");
                     }
                 });
+            }
+
+            @Override
+            public void onFailure(Call<Traffic> call, Throwable t) {
+
+            }
+        });
     }
 }
